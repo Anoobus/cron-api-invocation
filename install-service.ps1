@@ -4,9 +4,16 @@
 Write-Host get date identifier
 $dateId=Get-Date -Format "MMM-dd-yyyy"
 $dateId="cron-svc-build-$dateId"
-
 Write-Host create sql data dir for this build
-mkdir "..\$dateId\sources"
+mkdir "C:\netcore-app\$dateId\app"
+
+
+if ((Test-Path -Path ".\app\appsettings.Production.json" -PathType Leaf)) {
+     Write-Host copy Prod AppSettings
+     Copy-Item -Path ".\app\appsettings.Production.json" -Destination "C:\netcore-app\$dateId\app\appsettings.Production.json"
+ }
+
+cd "C:\netcore-app"
 
 # Setup the Event Viewer source
 $logFileExists = [System.Diagnostics.EventLog]::SourceExists("PSS Cron Service Source");
@@ -20,14 +27,14 @@ if (! $logFileExists) {
 Write-Host get latest source code
 #set tls level so we can download the zip
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-Invoke-WebRequest -Uri "https://github.com/Anoobus/cron-api-invocation/archive/master.zip" -OutFile "..\pss-cron-master.zip"
+Invoke-WebRequest -Uri "https://github.com/Anoobus/cron-api-invocation/archive/master.zip" -OutFile "pss-cron-master.zip"
 
 Write-Host unzip the file
-Expand-Archive -LiteralPath "..\pss-cron-master.zip" -DestinationPath "..\$dateId\sources"
-del  "..\pss-cron-master.zip"
+Expand-Archive -LiteralPath "pss-cron-master.zip" -DestinationPath "$dateId"
+del  "pss-cron-master.zip"
 
 # Need to determine where it should be installed
-$destination = "c:\netcore-app\$dateId"
+$destination = "c:\netcore-app\$dateId\app"
 
 # Setup the service info
 $params = @{
@@ -47,7 +54,15 @@ if($service -ne $null) {
 
 # Build and publish the Service
 Write-Host "Publishing service"
-dotnet publish ".\$dateId\sources\cron.api.invocation.csproj" -c Release -o $destination
+dotnet publish ".\$dateId\cron-api-invocation-master\cron.api.invocation\cron.api.invocation.csproj" -c Release -o $destination
+
+
+
+Write-Host copy install script
+Copy-Item -Path ".\$dateId\cron-api-invocation-master\install-service.ps1" -Destination ".\$dateId"
+Write-Host "Cleanup Sources"
+Remove-Item -LiteralPath "c:\netcore-app\$dateId\cron-api-invocation-master" -Recurse
+
 
 # Install the Windows Service if needed
 if($service -eq $null) {
