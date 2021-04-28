@@ -1,0 +1,30 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.31205.134
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "cron.api.invocation", "cron.api.invocation\cron.api.invocation.csproj", "{C0925F86-C0E5-43B0-A9B0-8F26E3BED765}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "deployment", "deployment", "{B60E7D4B-6C76-4B87-B473-51E032BB964B}"
+	ProjectSection(SolutionItems) = preProject
+		install-service.ps1 = install-service.ps1
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C0925F86-C0E5-43B0-A9B0-8F26E3BED765}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C0925F86-C0E5-43B0-A9B0-8F26E3BED765}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C0925F86-C0E5-43B0-A9B0-8F26E3BED765}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C0925F86-C0E5-43B0-A9B0-8F26E3BED765}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {06861E13-60E2-4C0A-8A71-1ABBF4651345}
+	EndGlobalSection
+EndGlobal
