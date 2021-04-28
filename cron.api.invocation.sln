@@ -7,6 +7,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "cron.api.invocation", "cron
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "deployment", "deployment", "{B60E7D4B-6C76-4B87-B473-51E032BB964B}"
 	ProjectSection(SolutionItems) = preProject
+		.gitignore = .gitignore
 		install-service.ps1 = install-service.ps1
 	EndProjectSection
 EndProject

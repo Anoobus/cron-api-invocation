@@ -1,4 +1,6 @@
 using System;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using Cronos;
@@ -28,7 +30,7 @@ namespace cron.api.invocation
             try
             {
                 _cancellationToken = cancellationToken;
-                _logger.LogInformation($"Orion Service started at: {DateTimeOffset.Now}");
+                _logger.LogInformation($"PSS Cron Service started at: {DateTimeOffset.Now}");
                 _timer = new Timer(RunJob, null, Timeout.Infinite, Timeout.Infinite);
                 SetupNextRun();
             }
@@ -42,13 +44,14 @@ namespace cron.api.invocation
 
         private void SetupNextRun()
         {
+            _logger.LogInformation($"Setting up next run from: {_settings.Cron}");
             var expression = CronExpression.Parse(_settings.Cron);
             var nextRun = expression.GetNextOccurrence(DateTimeOffset.Now, TimeZoneInfo.Local);
 
             if (nextRun.HasValue)
             {
                 var timeTillNextRun = nextRun.Value - DateTimeOffset.Now;
-                _timer.Change((int)timeTillNextRun.TotalMilliseconds, -1);
+                _timer.Change((int)timeTillNextRun.TotalMilliseconds, Timeout.Infinite);
             }
             else
             {
@@ -63,7 +66,6 @@ namespace cron.api.invocation
                 if (!_cancellationToken.IsCancellationRequested)
                 {
                     _logger.LogInformation($"Calling Service at: {DateTimeOffset.Now}");
-                    SetupNextRun();
                     await CallService();
                 }
             }
@@ -71,31 +73,71 @@ namespace cron.api.invocation
             {
                 _logger.LogError(ex, "Service call failed");
             }
+            finally
+            {
+                SetupNextRun();
+            }
         }
 
-        private async Task<string> GetBearerToken()
+        private async Task<GenerateTokenResult> GetBearerToken(RestClient client)
         {
-            var client = new RestClient(_settings.AuthUrl);
             var request = new RestRequest(Method.POST);
             request.AddHeader("cache-control", "no-cache");
-            request.AddHeader("content-type", "application/x-www-form-urlencoded");
-            request.AddParameter("application/x-www-form-urlencoded", $"grant_type=client_credentials&client_id={_settings.ClientId}&client_secret={_settings.ClientSecret}", ParameterType.RequestBody);
-            var response = await client.ExecuteAsync(request);
+            request.AddJsonBody(new
+            {
+                Email = _settings.ClientId,
+                Password = _settings.ClientSecret
+            });
+            var response = await client.ExecuteAsync<GenerateTokenResult>(request);
+            if(!response.IsSuccessful)
+                throw new Exception($"Failed to get bearer token due to: {response.ErrorMessage}");
 
-            return response.IsSuccessful ? response.Content : throw new Exception($"Failed to get bearer token due to: {response.ErrorMessage}");
+            return response.Data;
+        }
+
+        private RestClient GetHttpclientIgnoreSslWarnings(string url)
+        {
+            var client = new RestClient(url)
+            {
+                //using loop back address, so we are ignoring all cert errors for now.
+                RemoteCertificateValidationCallback = (sender, certificate, chain, sslPolicyErrors) => true
+            };
+            return client;
         }
 
         private async Task CallService()
         {
             if (!_cancellationToken.IsCancellationRequested)
             {
-                var token = await GetBearerToken();
+                var client = GetHttpclientIgnoreSslWarnings(_settings.AuthUrl);
 
-                var client = new RestClient(_settings.ServiceUrl);
-                var request = new RestRequest(Method.GET);
-                request.AddHeader("authorization", $"Bearer {token}");
-                await client.ExecuteAsync(request);
+                var GetTokenResult = await GetBearerToken(client);
+
+                foreach(var target in _settings.Targets)
+                {
+                    var request = new RestRequest(target.Uri, ParseMethod(target));
+                    request.AddHeader("Authorization", $"Bearer {GetTokenResult.AccessToken}");
+                    var resp = await client.ExecuteAsync(request);
+                    var noice = resp.Content;
+                    _logger.LogInformation($"Call to [{target.Method}] {target.Uri}, [{resp.StatusCode} - {resp.StatusDescription}]");
+
+                }
             }
+        }
+
+        private Method ParseMethod(ApiTarget target)
+        {
+            if(Enum.TryParse(target.Method, true, out Method parsed))
+                return parsed;
+
+            throw new Exception($"Failed to parse method for: {JsonSerializer.Serialize(target)}");
+        }
+
+        public class GenerateTokenResult
+        {
+            public string AccessToken { get; set; }
+            public DateTimeOffset ValidFrom { get; set; }
+            public DateTimeOffset ValidTo { get; set; }
         }
     }
 }
