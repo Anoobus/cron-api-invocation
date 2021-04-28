@@ -269,3 +269,5 @@ __pycache__/
 orion.app.logs
 /sql-data
 /orion.web/sql-data
+
+cron.api.invocation/appsettings.Development.json
